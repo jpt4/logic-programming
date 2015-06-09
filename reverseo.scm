@@ -1,11 +1,14 @@
-;(load "minikanren.scm")
+;;  reverseo.scm
+;;  jpt4
+;;  revised UTC20150609
+
 (load "miniKanren-with-symbolic-constraints/mk.scm")
 
-(define reverse-o
+(define reverseo
   (lambda (i o)
     (reverse-o-aux i '() o)))
 
-(define reverse-o-aux
+(define reverseo-aux
   (lambda (i acc o)
     (conde
       [(nullo i) (== acc o)]
@@ -14,7 +17,7 @@
          (conso a acc newacc)
          (reverse-o-aux d newacc o))])))
 
-(define acc-assoc-o
+(define acc-assoco
   (lambda (i l o)
     (conde
       [(nullo l) (== '() o)]
