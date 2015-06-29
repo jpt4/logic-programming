@@ -22,12 +22,12 @@
        (crosspro-auxo ma n res)
 			 |#
 
-(define (crosspro-auxo s ls o)
+(define (crosspro-auxo s ls t o)
   (conde
-    [(nullo ls) succeed]
+    [(nullo ls) (== t o)]
     [(fresh (lsa lsd res)
        (== `(,lsa . ,lsd) ls)
-       (==  `((,s . ,lsa) . ,o) res)
-       (crosspro-auxo s lsd res))]))
+       (==  `((,s . ,lsa) . ,t) res)
+       (crosspro-auxo s lsd res o))]))
   
     
