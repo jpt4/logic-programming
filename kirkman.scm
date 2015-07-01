@@ -32,6 +32,3 @@
        (==  `((,sa . ,lsa) . ,t) res)
        (crosspro-auxo s lsd res o))]))
   
-(define (lengtho ls len o)
-  (conde
-    [
