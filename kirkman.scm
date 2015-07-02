@@ -19,10 +19,11 @@
 (define (crosspro m n o)
   (conde
     [(== '() m) (=/= '() n) (== '() o)]
-    [(fresh (ma md na nd rest reso)
+    [(fresh (ma md na nd rest reso freso)
        (== `(,ma . ,md) m) (== `(,na . ,nd) n)
        (crosspro-auxo `(,ma) n rest)
        (== `(,rest . ,reso) freso)
+;       (== freso o)
        (flatteno freso o)
        (crosspro md n reso))]))
 
