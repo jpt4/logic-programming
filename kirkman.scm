@@ -23,8 +23,8 @@
        (== `(,ma . ,md) m) (== `(,na . ,nd) n)
        (crosspro-auxo `(,ma) n rest)
        (== `(,rest . ,reso) freso)
-;       (== freso o)
-       (flatteno freso o)
+       (== freso o)
+;       (unwrapo freso o)
        (crosspro md n reso))]))
 
 (define (crosspro-auxo s ls o)
@@ -36,4 +36,19 @@
        (==  `((,sa . ,lsa) . ,res) o)
        (crosspro-auxo s lsd res))]))
   
+#;(define (unwrapo ls o)
+  (conde
+    [(null?o ls) (null?o o)]
+    ))
 
+(define (list?o ls)
+  (fresh (a b)
+    (== `(,a . ,b) ls)
+    succeed))
+
+(define (lol?o ls)
+  (conde
+    [(null?o ls) succeed]
+    [(fresh (a d)
+       (caro ls a) (list?o a) (cdro ls d)
+       (lol?o d))]))
