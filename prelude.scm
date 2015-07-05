@@ -6,12 +6,24 @@
 
 (define (caro i o)
   (fresh (ls)
-    (== `(o . ls) i)))
+    (== `(,o . ,ls) i)))
 
 (define (cdro i o)
   (fresh (ls)
-    (== `(ls . o) i)))
+    (== `(,ls . ,o) i)))
 
+;;  flat?o - list without recursive elements
+(define (flat?o i)
+  (conde
+    [(null?o i)]
+    [(fresh (a d)
+       (caro i a) (cdro i d) (singleton?o a) (flat?o d))]))
+
+(define (singleton?o i)
+  (conde
+    [(symbolo i)]
+    [(numbero i)]))
+    
 ;;  (flatteno) output is not uniquely identifying of input. To create 
 ;;  bidirectionality, a degree of flattening must be specified. (Compare TFP's
 ;;  recursion depth.
@@ -66,7 +78,6 @@
 ()
 >
 |#
-       
 
 (define (lengtho ls len o)
   (conde
@@ -75,6 +86,10 @@
        (== `(,lsa . ,lsd) ls)
        (add1o len res)
        (lengtho lsd res o))]))
+
+(define (list?o i)
+  (fresh (a d)
+    (== `(,a . ,d) i)))
 
 (define (non-null?o i)
   (=/= '() i))
