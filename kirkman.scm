@@ -41,10 +41,18 @@
 (define (unwrapo ls o)
   (conde
     [(null?o ls) (null?o o)]
-    [(fresh (a)
-       (caro ls a) (singleton?o a) (== a o)
-        )]
-))
+    [(fresh (a aa ad d next res)
+       (caro ls a) (cdro ls d) 
+       (== `(,aa . ,ad) a) (== `(,aa . ,res) o)
+       (== `(,ad . ,d) next) (unwrapo next res))]))
+
+(define (diag-unwrapo ls o)
+  (conde
+    [(null?o ls) (null?o o)]
+    [(fresh (a aa ad d next res)
+       (caro ls a) (cdro ls d) 
+       (== `(,aa . ,ad) a) (== `(,aa . ,res) next)
+       (== `(,aa ,ad . ,d) o))]))
 
 
 #|
