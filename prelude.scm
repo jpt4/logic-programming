@@ -79,23 +79,45 @@
 >
 |#
 
-(define (lengtho ls len o)
+(define (lengtho ls o)
+  (conde
+    [(null?o ls) (== '() o)]
+    [(fresh (a d res)
+       (== `(,a . ,d) ls)
+       (add1o res o) (lengtho d res))]))
+
+;;  accumulator style (lengtho)
+(define (length-acco ls len o)
   (conde
     [(null?o ls) (== len o)]
     [(fresh (lsa lsd res)
        (== `(,lsa . ,lsd) ls)
        (add1o len res)
-       (lengtho lsd res o))]))
+       (length-acco lsd res o))]))
 
-(define (list?o i)
-  (fresh (a d)
-    (== `(,a . ,d) i)))
+(define (list?o ls)
+  (conde
+    [(null?o ls)]
+    [(fresh (a b)
+       (== `(,a . ,b) ls))]))
+
+(define (lol?o ls)
+  (conde
+    [(fresh (a d)
+       (caro ls a) (cdro ls d) (list?o a) (null?o d))]
+    [(fresh (a d)
+       (caro ls a) (list?o a) (cdro ls d)
+       (lol?o d))]))
 
 (define (non-null?o i)
   (=/= '() i))
 
 (define (null?o i)
   (== '() i))
+
+(define (pair?o p)
+  (fresh (a d)
+    (== `(,a . ,d) p)))
 
 (define (sub1o i o)
   (add1o o i))

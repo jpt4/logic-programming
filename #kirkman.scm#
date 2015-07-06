@@ -41,7 +41,9 @@
 (define (unwrapo ls o)
   (conde
     [(null?o ls) (null?o o)]
-    [(fresh (a) (caro ls a) (singleton?o a) (== a o))]
+    [(fresh (a)
+       (caro ls a) (singleton?o a) (== a o)
+        )]
 ))
 
 
