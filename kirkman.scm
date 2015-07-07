@@ -54,7 +54,7 @@
        (== `(,aa . ,ad) a) (== `(,aa . ,res) next)
        (== `(,aa ,ad . ,d) o))]))
 
-;test sgit edit - does this push?
+;test sgit edit - does this push? It does; now, does it know me?
 #|
     [(fresh (a d resa resd)
        (== `(,a . ,d) ls) (pair?o a)
