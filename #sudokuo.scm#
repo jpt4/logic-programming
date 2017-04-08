@@ -1,0 +1,16 @@
+;UTC20170408
+;jpt4
+;mk sudoku solver
+;Chez Scheme v9.4
+
+(load "miniKanren-with-symbolic-constraints/mk.scm")
+
+;intersection i of sets a, b
+;sets are lists with no repeated elements
+(define (set-conjo a b i)
+  (set-conjo-aux a b i '()))
+
+(define (set-conjo-aux a b i acc)
+  (conde
+   [(
+  
