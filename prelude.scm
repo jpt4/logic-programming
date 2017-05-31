@@ -4,6 +4,15 @@
 (define (add1o i o)
   (pluso i '(1) o))
 
+(define (appendo ls e o)
+  (conde
+   [(null?o ls) (== e o)]
+   [(list?o ls) (null?o e) (== ls o)]
+   [(list?o ls) (=/= '() ls) (=/= '() e)
+    (fresh (a)
+     (== `(,a) ls)
+     (conso a e o))]))
+
 (define (caro i o)
   (fresh (ls)
     (== `(,o . ,ls) i)))
@@ -11,6 +20,9 @@
 (define (cdro i o)
   (fresh (ls)
     (== `(,ls . ,o) i)))
+
+(define (conso a d o)
+  (== `(,a . ,d) o))
 
 ;;  flat?o - list without recursive elements
 (define (flat?o i)
@@ -79,21 +91,41 @@
 >
 |#
 
-(define (lengtho ls o)
-  (conde
-    [(null?o ls) (== '() o)]
-    [(fresh (a d res)
-       (== `(,a . ,d) ls)
-       (add1o res o) (lengtho d res))]))
+#|
+(define (lengtho ls len)
+  (length-acco ls '() len))
 
 ;;  accumulator style (lengtho)
-(define (length-acco ls len o)
+(define (length-acco ls acc len)
   (conde
-    [(null?o ls) (== len o)]
-    [(fresh (lsa lsd res)
-       (== `(,lsa . ,lsd) ls)
-       (add1o len res)
-       (length-acco lsd res o))]))
+   [(null?o ls) (null?o acc) (null?o len)]
+   [(fresh (ls-val)
+           (null?o acc) 
+           (non-null?o ls) (== ls ls-val)
+           (laccauxo ls acc len))]
+   [(non-null?o acc) 'diag (== len 'err-non-null-acc-initial-value)
+    ]))
+(define (laccauxo ls acc len)
+  (conde
+   [(null?o ls) (non-null?o acc) (== acc len)]
+   [(fresh (lsa lsd res)
+      (add1o acc res)
+      (== `(,lsa . ,lsd) ls)
+      (laccauxo lsd res len))]))
+|#
+
+(define lengtho
+(lambda (ls num)
+(conde
+     [(null?o ls) (== num '())]
+     [(fresh (a d res)
+             (== `(,a . ,d) ls)
+             (lengtho d res)
+             (pluso '(1) res num)
+             )])))
+
+(define (listo a d o)
+  (== `(,a ,d) o))
 
 (define (list?o ls)
   (conde
