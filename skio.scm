@@ -5,28 +5,34 @@
 
 (load "miniKanren-with-symbolic-constraints/mk.scm")
 
-(define (base-argo i)
+(define (varo i)
   (conde
    [(symbolo i)
     (=/= 'S i) (=/= 'K i) (=/= 'I i)]))
           
 ;;Terms need only be proximal, not complete
-(define (ski-termo i)
+(define (termo i)
   (conde
    [(== 'S i)]
    [(== 'K i)]
    [(== 'I i)]
    [(fresh (a d)
-     (== `(,a ,d) i)
-     (ski-termo a) (ski-termo d))]))
+     (== `(,a ,d) i) (=/= '() d)
+     (termo a) (termo d))]))
 
 (define (laso i o)
   (conde
-   [(ski-termo i) (== i o)]
+   [(varo i) (== i o)]
+   [(termo i) (== i o)]
    [(fresh (a ad dd resa resad resdd)
+     (== `(,a ,ad ,dd) i) 
+     (laso a resa) (laso ad resad) (laso dd resdd)
+     (== `((,resa ,resad) ,resdd) o))]
+   [(fresh (a ad dd add ddd resa resad resdd)
      (== `(,a ,ad . ,dd) i) (=/= '() dd)
      (laso a resa) (laso ad resad) (laso dd resdd)
-     (== `((,resa ,resad) . ,resdd) o))]))
+     (== `((,resa ,resad) ,resdd) o))]))
+  
 
 ;;XXX Require an expression builder of some sort to convert terms + args to 
 ;;evaluable expressions, determine if possible.
