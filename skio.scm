@@ -13,29 +13,27 @@
 ;;Terms need only be proximal, not complete
 (define (termo i)
   (conde
+   [(varo i)]
    [(== 'S i)]
    [(== 'K i)]
    [(== 'I i)]
    [(fresh (a d)
      (== `(,a ,d) i) (=/= '() d)
      (termo a) (termo d))]))
-
-(define (laso i o)
-  (conde
-   [(varo i) (== i o)]
-   [(termo i) (== i o)]
-   [(fresh (a ad dd resa resad resdd)
-     (== `(,a ,ad ,dd) i) 
-     (laso a resa) (laso ad resad) (laso dd resdd)
-     (== `((,resa ,resad) ,resdd) o))]
-   [(fresh (a ad dd add ddd resa resad resdd)
-     (== `(,a ,ad . ,dd) i) (=/= '() dd)
-     (laso a resa) (laso ad resad) (laso dd resdd)
-     (== `((,resa ,resad) ,resdd) o))]))
-  
-
-;;XXX Require an expression builder of some sort to convert terms + args to 
-;;evaluable expressions, determine if possible.
+;;Irreducible terms
+(define (ground-termo i)
+  (fresh (x y z)
+   (conde
+    [(termo i) 
+     (=/= `(I ,x) i) (=/= `((K ,x) ,y) i) (=/= `(((S ,x) ,y) ,z) i)])))
+;;Irreducible expressions
+(define (ground-expo i)
+  (fresh (a b c x y z)
+   (conde
+    [(ground-termo i)]
+    [(== `(,a ,b) i) (ground-termo a) (ground-termo b)]
+    [(== `((,a ,b) ,c) i) 
+     (ground-termo a) (ground-termo b) (ground-termo c)])))
 
 (define (io i o)
   (fresh (x)
@@ -58,6 +56,19 @@
     [(ko i res) (skio res o)]
     [(so i res) (skio res o)]
    )))
+
+(define (laso i o)
+  (conde
+   [(varo i) (== i o)]
+   [(termo i) (== i o)]
+   [(fresh (a ad dd resa resad resdd)
+     (== `(,a ,ad ,dd) i) 
+     (laso a resa) (laso ad resad) (laso dd resdd)
+     (== `((,resa ,resad) ,resdd) o))]
+   [(fresh (a ad dd add ddd resa resad resdd)
+     (== `(,a ,ad . ,dd) i) (=/= '() dd)
+     (laso a resa) (laso ad resad) (laso dd resdd)
+     (== `((,resa ,resad) ,resdd) o))]))
 
 #|Why?
 > (run 1 (p q r) (=/= `(,p . ,q) r))
