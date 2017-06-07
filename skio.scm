@@ -21,11 +21,18 @@
      (== `(,a ,d) i) (=/= '() d)
      (termo a) (termo d))]))
 ;;Irreducible terms
-(define (ground-termo i)
-  (fresh (x y z)
+(define (ground-termo i o)
+  (fresh (a x y z)
    (conde
-    [(termo i) 
-     (=/= `(I ,x) i) (=/= `((K ,x) ,y) i) (=/= `(((S ,x) ,y) ,z) i)])))
+    [(== 'I i) (== i o)]
+    [(== 'K i) (== i o)]
+    [(== 'S i) (== i o)]
+    [(== `(,a ,x) i) (=/= 'I a) (termo i) (== i o)]
+    [(== `((,a ,x) ,y) i) (=/= 'K a) (termo i) (== i o)]
+    [(== `(((,a ,x) ,y) ,z) i) (=/= 'S a) (termo i) (== i o)])))
+(define (ground-term?o i)
+  (fresh (o)
+   (ground-termo i o)))
 ;;Irreducible expressions
 (define (ground-expo i)
   (fresh (a b c x y z)
@@ -35,27 +42,52 @@
     [(== `((,a ,b) ,c) i) 
      (ground-termo a) (ground-termo b) (ground-termo c)])))
 
+(define (irredexo i)
+  (fresh (a d x y z)
+   (conde
+    [(varo i)]
+    [(== 'I i)]
+    [(== 'K i)]
+    [(== 'S i)]
+    [(== '(I) i)]
+    [(== '(K) i)]
+    [(== '(S) i)]
+    [(== `(,a I) i) (varo a)]
+    [(== `(K ,a) i) (varo a)]
+    [(== `(,a K) i) (varo a)]
+    [(== `(,a I) i) (varo a)]    
+    [(== `(S ,a) i) (varo a)])))
+
 (define (io i o)
-  (fresh (x)
-         (== `(I ,x) i)
-         (== x o)))
+  (fresh (x d)
+   (conde
+    [(== '(I) i) (== 'I o)]
+    [(== `(I ,x) i) (== x o)]
+    [(== `(I ,x . ,d) i) (== `(,x . ,d) o)])))
 (define (ko i o)
-  (fresh (x y)
-         (== `((K ,x) ,y) i)
-         (== x o)))
+  (fresh (x y d)
+   (conde
+    [(== '(K) i) (== 'K o)]
+    [(== `(K ,x) i) (== i o)]
+    [(== `(K ,x ,y) i) (== x o)]
+    [(== `(K ,x ,y . ,d) i) (== `(,x . ,d) o)])))
 (define (so i o)
-  (fresh (x y z)
-         (== `(((S ,x) ,y) ,z) i)
-         (== `((,x ,z) (,y ,z)) o)))
+  (fresh (x y z d)
+   (conde
+    [(== '(S) i) (== 'S o)]
+    [(== `(S ,x) i) (== i o)]
+    [(== `(S ,x ,y) i) (== i o)]
+    [(== `(S ,x ,y ,z) i) (== `(,x ,z (,y ,z)) o)]
+    [(== `(S ,x ,y ,z . ,d) i) (== `(,x ,z (,y ,z) . ,d) o)])))
 
 (define (skio i o)
-  (fresh (res)
+  (fresh (a b c x y z res)
    (conde
-    [(base-argo i) (== i o)]
+    [(== i o)]
     [(io i res) (skio res o)]
     [(ko i res) (skio res o)]
-    [(so i res) (skio res o)]
-   )))
+    [(so i res) (skio res o)]    
+    )))
 
 (define (laso i o)
   (conde
@@ -84,5 +116,26 @@
 > (run 1 (a b c) (fresh (p q r) (=/= `(,p . ,q) r) (== p a) (== q b) (== r c) 
                         (== r '(1 2))))
 (((_.0 _.1 (1 2)) (=/= ((_.0 1) (_.1 (2))))))
+***
+> (run* (q) (fresh (x y z) (conde
+                             [(== '(((S x) y) z) q) (=/= '(((S ,x) ,y) ,z) q)])))
+((((S x) y) z))
+> (run* (q) (fresh (a x y z) (conde
+                             [(== '(((S x) y) z) q) (=/= `(((S ,x) ,y) ,z) q)])))
+((((S x) y) z))
+> (run* (q) (fresh (a x y z) (conde
+                             [(== '(((S x) y) z) q) (== `(((,a ,x) ,y) ,z) q) (=/= a 'S) (=/= `(((S ,x) ,y) ,z) q)])))
+()
+> (run* (q) (fresh (a x y z) (conde
+                             [(== '(((S x) y) z) q) (== `(((,a ,x) ,y) ,z) q) (=/= a 'S)])))
+()
+> (run* (q) (fresh (a x y z) (conde
+                             [(termo q) (== '(((S x) y) z) q) (== `(((,a ,x) ,y) ,z) q) (=/= a 'S)])))
+^Cbreak> q
+
+> (run* (q) (fresh (a x y z) (conde
+                             [(== '(((S x) y) z) q) (== `(((,a ,x) ,y) ,z) q) (=/= a 'S) (termo q)])))
+()
+>
 |#
    
