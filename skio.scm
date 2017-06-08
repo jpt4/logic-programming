@@ -42,7 +42,7 @@
     [(== `((,a ,b) ,c) i) 
      (ground-termo a) (ground-termo b) (ground-termo c)])))
 
-(define (irredexo i)
+#;(define (irredexo i)
   (fresh (a d x y z)
    (conde
     [(varo i)]
@@ -81,15 +81,23 @@
     [(== `(S ,x ,y ,z . ,d) i) (== `(,x ,z (,y ,z) . ,d) o)])))
 
 (define (skio i o)
-  (fresh (a b c x y z res)
+  (fresh (a b c d aa da x y z res)
    (conde
-    [(== i o)]
+    [(== '() i) (== i o)]
+    [(== 'I i) (== i o)]
+    [(== 'K i) (== i o)]
+    [(== 'S i) (== i o)]
+    [(varo i) (== i o)]
     [(io i res) (skio res o)]
     [(ko i res) (skio res o)]
-    [(so i res) (skio res o)]    
+    [(so i res) (skio res o)]
+    [(== `(,a . ,b) i) (=/= 'I a) (=/= 'K a) (=/= 'S a) 
+     (skio b res) (== `(,a . ,res) o)]
+    [(== `(,a . ,d) i) (== `(,aa . ,da) a) 
+     (skio a res) (skio `(,res . ,d) o) ]
     )))
 
-(define (laso i o)
+#;(define (laso i o)
   (conde
    [(varo i) (== i o)]
    [(termo i) (== i o)]
