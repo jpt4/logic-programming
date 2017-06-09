@@ -8,20 +8,75 @@
 (define (varo i)
   (conde
    [(symbolo i)
-    (=/= 'S i) (=/= 'K i) (=/= 'I i)]))
-          
+    (=/= 'I i) (=/= 'K i) (=/= 'S i)]))
+
+(define (combo i)
+  (conde
+   [(== 'I i)]
+   [(== 'K i)]
+   [(== 'S i)]))
+
 ;;Terms need only be proximal, not complete
 (define (termo i)
   (conde
    [(varo i)]
-   [(== 'S i)]
-   [(== 'K i)]
-   [(== 'I i)]
+   [(combo i)]
    [(fresh (a d)
      (== `(,a ,d) i) (=/= '() d)
      (termo a) (termo d))]))
+#;(define (term?o i o)
+  (conde
+   [(termo i) (== i o)]))
+(define (build-expo-min a d o)
+  (fresh (ad dd b)
+   (conde
+    [(== '() d) #;(== 'not-pair-null o) (== `(,a . ,d) o)]
+    [(varo d) #;(== 'varo o) (== `(,a ,d) o)]
+    [(combo d) (== 'combo o) (== `(,a ,d) o)]
+    [(== `(,ad . ,dd) d) (=/= '() dd) #;(== 'list o) (== `(,a . ,d) o)])))
+
+(define (io i o)
+  (fresh (x d)
+   (conde
+    [(== '(I) i) (== 'I o)]
+    [(== `(I ,x) i) (== x o)]
+    [(== `(I ,x . ,d) i) (=/= '() d) (== `(,x . ,d) o)])))
+(define (ko i o)
+  (fresh (x y d)
+   (conde
+    [(== '(K) i) (== 'K o)]
+    [(== `(K ,x) i) (== i o)]
+    [(== `(K ,x ,y) i) (== x o)]
+    [(== `(K ,x ,y . ,d) i) (=/= '() d) (== `(,x . ,d) o)])))
+(define (so i o)
+  (fresh (x y z d)
+   (conde
+    [(== '(S) i) (== 'S o) #;(== '(S) o)]
+    [(== `(S ,x) i) (== i o) #;(== '(S x) o)]
+    [(== `(S ,x ,y) i) (== i o) #;(== '(S x y) o)]
+    [(== `(S ,x ,y ,z) i) (== `(,x ,z (,y ,z)) o) #;(== `(S x=,x y=,y z=,z) o)]
+    [(== `(S ,x ,y ,z . ,d) i) (=/= '() d) (== `(,x ,z (,y ,z) . ,d) o)
+     #;(== `(S x=,x y=,y z=,z d=,d) o)])))
+
+(define (skio i o)
+  (fresh (a b c d aa da x y z res exp diag)
+   (conde
+    [(== '() i) (== i o)]
+    [(combo i) (== i o)]
+    [(varo i) (== i o)]
+    [(io i res) (skio res o)]
+    [(ko i res) (skio res o)]
+    [(so i res) (skio res o)]
+    [(== `(,a . ,b) i) (=/= `(,aa . ,da) a) (=/= 'I a) (=/= 'K a) (=/= 'S a)
+     (skio b res) #;(build-expo a res o) 
+     #;(skio b o)
+     #;(build-expo a res diag) #;(== `(a=,a b=,b res=,res diag=,diag) o)]
+    [(== `(,a . ,d) i) (== `(,aa . ,da) a) 
+     (skio a res) (build-expo res d exp) (skio exp o)]
+    )))
+
 ;;Irreducible terms
-(define (ground-termo i o)
+#;(define (ground-termo i o)
   (fresh (a x y z)
    (conde
     [(== 'I i) (== i o)]
@@ -30,11 +85,11 @@
     [(== `(,a ,x) i) (=/= 'I a) (termo i) (== i o)]
     [(== `((,a ,x) ,y) i) (=/= 'K a) (termo i) (== i o)]
     [(== `(((,a ,x) ,y) ,z) i) (=/= 'S a) (termo i) (== i o)])))
-(define (ground-term?o i)
+#;(define (ground-term?o i)
   (fresh (o)
    (ground-termo i o)))
 ;;Irreducible expressions
-(define (ground-expo i)
+#;(define (ground-expo i)
   (fresh (a b c x y z)
    (conde
     [(ground-termo i)]
@@ -58,44 +113,6 @@
     [(== `(,a I) i) (varo a)]    
     [(== `(S ,a) i) (varo a)])))
 
-(define (io i o)
-  (fresh (x d)
-   (conde
-    [(== '(I) i) (== 'I o)]
-    [(== `(I ,x) i) (== x o)]
-    [(== `(I ,x . ,d) i) (== `(,x . ,d) o)])))
-(define (ko i o)
-  (fresh (x y d)
-   (conde
-    [(== '(K) i) (== 'K o)]
-    [(== `(K ,x) i) (== i o)]
-    [(== `(K ,x ,y) i) (== x o)]
-    [(== `(K ,x ,y . ,d) i) (== `(,x . ,d) o)])))
-(define (so i o)
-  (fresh (x y z d)
-   (conde
-    [(== '(S) i) (== 'S o)]
-    [(== `(S ,x) i) (== i o)]
-    [(== `(S ,x ,y) i) (== i o)]
-    [(== `(S ,x ,y ,z) i) (== `(,x ,z (,y ,z)) o)]
-    [(== `(S ,x ,y ,z . ,d) i) (== `(,x ,z (,y ,z) . ,d) o)])))
-
-(define (skio i o)
-  (fresh (a b c d aa da x y z res)
-   (conde
-    [(== '() i) (== i o)]
-    [(== 'I i) (== i o)]
-    [(== 'K i) (== i o)]
-    [(== 'S i) (== i o)]
-    [(varo i) (== i o)]
-    [(io i res) (skio res o)]
-    [(ko i res) (skio res o)]
-    [(so i res) (skio res o)]
-    [(== `(,a . ,b) i) (=/= 'I a) (=/= 'K a) (=/= 'S a) 
-     (skio b res) (== `(,a . ,res) o)]
-    [(== `(,a . ,d) i) (== `(,aa . ,da) a) 
-     (skio a res) (skio `(,res . ,d) o) ]
-    )))
 
 #;(define (laso i o)
   (conde
@@ -147,3 +164,23 @@
 >
 |#
    
+;;Lessons
+#|
+(run* (a b p q) (build-expo a b p) (build-expo-min a b q) (=/= p q))
+(define (build-expo a d o)
+  (fresh (ad dd b)
+   (conde
+    [(== `(,ad . ,dd) d) (== '() dd) #;(== 'list-1 o) (== `(,a . ,d) o)]
+    [(== `(,ad . ,dd) d) (=/= '() dd) #;(== 'list o) (== `(,a . ,d) o)]
+    [(=/= `(,ad . ,dd) d) (== '() d) #;(== 'not-pair-null o) (== `(,a . ,d) o)]
+    [(varo d) #;(== 'not-pair-not-null o) (== `(,a ,d) o)]
+    [(combo d) #;(== 'not-pair-not-null o) (== `(,a ,d) o)])))
+(define (build-expo-min a d o)
+  (fresh (ad dd b)
+   (conde
+    ;[#;(== `(,ad . ,dd) d) #;(== '() dd) (== 'list-1 o) #;(== `(,a . ,d) o)]
+    [(== `(,ad . ,dd) d) (=/= '() dd) #;(== 'list o) (== `(,a . ,d) o)]
+    [#;(=/= `(,ad . ,dd) d) (== '() d) #;(== 'not-pair-null o) (== `(,a . ,d) o)]
+    [(varo d) #;(== 'varo o) (== `(,a ,d) o)]
+    [(combo d) (== 'combo o) (== `(,a ,d) o)])))
+|#
