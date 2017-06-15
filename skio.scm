@@ -22,18 +22,39 @@
    [(varo i)]
    [(combo i)]
    [(fresh (a d)
-     (== `(,a ,d) i) (=/= '() d)
-     (termo a) (termo d))]))
+     (== `(,a ,d) i) (termo a) (termo d))]
+   [(fresh (a d)
+     (== `(,a . ,d) i) (termo a) (termo d))]))
+(define (strict-termo i)
+  (conde
+   [(varo i)]
+   [(combo i)]
+   [(fresh (a d)
+     (== `(,a ,d) i)
+     (strict-termo a) (strict-termo d))]))
 #;(define (term?o i o)
   (conde
    [(termo i) (== i o)]))
-(define (build-expo-min a d o)
+(define (build-expo a d o)
   (fresh (ad dd b)
    (conde
     [(== '() d) #;(== 'not-pair-null o) (== `(,a . ,d) o)]
     [(varo d) #;(== 'varo o) (== `(,a ,d) o)]
     [(combo d) (== 'combo o) (== `(,a ,d) o)]
     [(== `(,ad . ,dd) d) (=/= '() dd) #;(== 'list o) (== `(,a . ,d) o)])))
+
+(define (strict-io i o)
+  (fresh (x)
+   (conde
+    [(== `(I ,x) i) (== x o)])))
+(define (strict-ko i o)
+  (fresh (x y)
+   (conde
+    [(== `((K ,x) ,y) i) (== x o)])))
+(define (strict-so i o)
+  (fresh (x y z)
+   (conde
+    [(== `(((S ,x) ,y) ,z) i)  (== `((,x ,z) (,y ,z)) o)])))    
 
 (define (io i o)
   (fresh (x d)
@@ -67,13 +88,101 @@
     [(io i res) (skio res o)]
     [(ko i res) (skio res o)]
     [(so i res) (skio res o)]
-    [(== `(,a . ,b) i) (=/= `(,aa . ,da) a) (=/= 'I a) (=/= 'K a) (=/= 'S a)
-     (skio b res) #;(build-expo a res o) 
+    [(== `(,a . ,b) i) (varo a)
+     (skio b res) (build-expo a res o) 
      #;(skio b o)
      #;(build-expo a res diag) #;(== `(a=,a b=,b res=,res diag=,diag) o)]
+    #;[(== `(,a . ,b) i) (combo a) (skio b res) (build-expo a res o)
+     (build-expo a res diag) (== `(a=,a b=,b res=,res diag=,diag) o)]
     [(== `(,a . ,d) i) (== `(,aa . ,da) a) 
      (skio a res) (build-expo res d exp) (skio exp o)]
     )))
+
+(define (strict-skio-dt i d t o)
+  (fresh (a b c resa resb resd resad resbd res exp diag)
+   (conde
+    [(== `(,a (,a ,b)) d) (== i a) (== d t) (== i o) 
+     #;(== `(stop i=,i a=,a b=,b d=,d t=,t) o)]
+    [(conde
+;    [(== '() i) (== i o)]
+      [(combo i) (== `(,i ,d) resd) (strict-skio i resd t o)]
+      [(varo i) (== `(,i ,d) resd) (strict-skio i resd t o)]
+      [(strict-io i res) (== `(,res ,d) resd) (strict-skio res resd t o) 
+       #;(strict-skio res resd t diag)
+       #;(== `(so i=,i res=,res d=,d resd=,resd t=,t diag=,diag) o)]
+      [(strict-ko i res) (== `(,res ,d) resd) #;(strict-skio res resd t o) 
+       (strict-skio res resd t diag)
+       (== `(so i=,i res=,res d=,d resd=,resd t=,t diag=,diag) o)]
+      [(strict-so i res) (== `(,res ,d) resd) (strict-skio res resd t o) 
+       #;(strict-skio res resd t diag)
+       #;(== `(so i=,i res=,res d=,d resd=,resd t=,t diag=,diag) o)]
+      [(== `(,a ,b) i) (strict-skio a d t resa) (strict-skio b d t resb) 
+       (== `(,resa ,resb) res) (== `(,res ,d) resd) #;(strict-skio res resd t o)
+       #;(strict-skio res resd t diag)
+       (== `(pair i=,i a=,a b=,b resa=,resa resb=,resb res=,res resd=,resd d=,d t=,t diag=,diag) o)]
+#;      [(== `((,a ,b) ,c) i)
+       (strict-skio b res) (strict-skio `((,a ,res) ,c) o)]
+#;      [(== `(,a (,b ,c)) i) 
+       (strict-skio b res) (strict-skio `(,a (,b ,c)) o)]
+    )])))
+
+(define (strict-skio i d o)
+  (fresh (a b c resa resb resd resad resbd res exp diag)
+   (conde
+    [(== `(,a (,a ,b)) d) (== i a) (== i o) 
+     #;(== `(stop i=,i a=,a b=,b d=,d) o)]
+    [(conde
+;    [(== '() i) (== i o)]
+      [(combo i) (== `(,i ,d) resd) (strict-skio i resd o)]
+      [(varo i) (== `(,i ,d) resd) (strict-skio i resd o)]
+      [(strict-io i res) (== `(,res ,d) resd) (strict-skio res resd o) 
+       #;(strict-skio res resd diag)
+       #;(== `(so i=,i res=,res d=,d resd=,resd diag=,diag) o)]
+      [(strict-ko i res) (== `(,res ,d) resd) (strict-skio res resd o) 
+       #;(strict-skio res resd diag)
+       #;(== `(so i=,i res=,res d=,d resd=,resd diag=,diag) o)]
+      [(strict-so i res) (== `(,res ,d) resd) (strict-skio res resd o) 
+       #;(strict-skio res resd diag)
+       #;(== `(so i=,i res=,res d=,d resd=,resd diag=,diag) o)]
+      [(== `(,a ,b) i) (strict-skio a d resa) (strict-skio b d resb) 
+       (== `(,resa ,resb) res) (== `(,res ,d) resd) (strict-skio res resd o)
+       #;(strict-skio res resd diag)
+       #;(== `(pair i=,i a=,a b=,b resa=,resa resb=,resb res=,res resd=,resd d=,d diag=,diag) o)]
+#;      [(== `((,a ,b) ,c) i)
+       (strict-skio b res) (strict-skio `((,a ,res) ,c) o)]
+#;      [(== `(,a (,b ,c)) i) 
+       (strict-skio b res) (strict-skio `(,a (,b ,c)) o)]
+    )])))
+
+;;success with strict-skio
+#|
+> (run 1 (o) (strict-skio '(((S (K a)) ((S I) I)) b) 'init o))
+((a (b b)))
+> (run 2 (o) (strict-skio '(((S (K a)) ((S I) I)) b) 'init o))
+((a (b b)) (a (b b)))
+> (run 5 (o) (strict-skio '(((S (K a)) ((S I) I)) b) 'init o))
+((a (b b)) (a (b b)) (a (b b)) (a (b b)) (a (b b)))
+> (run 1 (o) (strict-skio '(((S (K (S I))) a) b) 'init o))
+(((S I) (a b)))
+> (run 1 (o) (strict-skio '((((S (K (S I))) K) a) b) 'init o))
+((b a))
+
+|#
+
+;irreducible
+(define (no-redexo i o)
+  (fresh (a1 a2 a3 b x1 x2 x3 y2 y3 z3)
+   (conde
+    [(termo i) (=/= `(,a1 ,x1) i) (== 'I a1) (=/= `((,a2 ,x2) ,y2) i) (== 'K a2) 
+     (== `(a1=,a1 a2=,a2 a3=,a3 x1=,x1 x2=,x2 x3=,x3 y2=,y2 y3=,y3 z3=,z3) o)]
+    #;[(termo i) (== `(,a ,x) i) (=/= `((,a ,x) ,y) i) (=/= `(((,a ,x) ,y) ,z) i)
+     (=/= 'I a) (== `(a=,a x=,x) o)]
+    #;[(termo i) (== `((,a ,x) ,y) i) (=/= `(,a ,x) i) (=/= `(((,a ,x) ,y) ,z) i)
+     (=/= 'K a) (== `(a=,a x=,x y=,y) o)]
+    #;[(termo i) (== `(((,a ,x) ,y) ,z) i) (=/= `((,a ,x) ,y) i) (=/= `(,a ,x) i)
+     (=/= 'S a) (== `(a=,a x=,x y=,y z=,z) o)]
+    #;[(termo i) (== `(,a ,b) i) (no-redexo a) (no-redexo b)])))
+
 
 ;;Irreducible terms
 #;(define (ground-termo i o)
