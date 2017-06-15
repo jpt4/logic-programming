@@ -167,6 +167,26 @@
 > (run 1 (o) (strict-skio '((((S (K (S I))) K) a) b) 'init o))
 ((b a))
 
+> (run 1 (o) (strict-skio '(a (a (a b))) 'init o))
+((a (a (a b))))
+> (run 1 (o) (strict-skio '(a (a (K b))) 'init o))
+((a (a (K b))))
+> (run 1 (o) (strict-skio '((((a b) c) d) e) 'init o))
+(((((a b) c) d) e))
+> (run 1 (o) (strict-skio '((((K b) c) d) e) 'init o))
+(((b d) e))
+> (run 1 (o) (strict-skio '((((K b) c) (K d) e)) 'init o))
+()
+> (run 1 (o) (termo '((((K b) c) (K d) e))))
+()
+> (run 1 (o) (termo '((((K b) c) ((K d) e)))))
+()
+> (run 1 (o) (termo '(((K b) c) ((K d) e))))
+(_.0)
+> (run 1 (o) (strict-skio '(((K b) c) ((K d) e)) 'init o))
+((b d))
+>
+
 |#
 
 ;irreducible
