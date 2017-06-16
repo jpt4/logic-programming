@@ -57,22 +57,66 @@
     [(== `(((S ,x) ,y) ,z) i)  (== `((,x ,z) (,y ,z)) o)])))
 
 ;;core interpreter
-(define (skio-aux i d o)
-  (fresh (a b c resa resb resd resad resbd res exp diag)
+#;(define (skio-aux i h o)
+  (fresh (a b c d resa resb resh res)
    (conde
-    [(== `(,a (,a ,b)) d) (== i a) (== i o)]
+    [(== `(,a ,a) h) (== i a) (== i o)]
     [(conde
-      [(combo i) (== `(,i ,d) resd) (skio-aux i resd o)]
-      [(varo i) (== `(,i ,d) resd) (skio-aux i resd o)]
-      [(io i res) (== `(,res ,d) resd) (skio-aux res resd o)]
-      [(ko i res) (== `(,res ,d) resd) (skio-aux res resd o)]
-      [(so i res) (== `(,res ,d) resd) (skio-aux res resd o)]
-      [(== `(,a ,b) i) (skio-aux a d resa) (skio-aux b d resb) 
-       (== `(,resa ,resb) res) (== `(,res ,d) resd) (skio-aux res resd o)]
+      [(varo i) (== `(,a ,b) h) (== `(,i ,a) resh) (skio-aux i resh o)]
+      [(combo i) (== `(,a ,b) h) (== `(,i ,a) resh) (skio-aux i resh o)]
+      [(io i res) (== `(,a ,b) h) (== `(,i ,a) resh) (skio-aux res resh o)]
+      [(ko i res) (== `(,a ,b) h) (== `(,i ,a) resh) (skio-aux res resh o)]
+      [(so i res) (== `(,a ,b) h) (== `(,i ,a) resh) (skio-aux res resh o)]
+      [(== `(,a ,b) i) (skio-aux a h resa) (skio-aux b h resb)
+       (== `(,resa ,resb) res) 
+       (== `(,c ,d) h) (== `(,res ,c) resh) (skio-aux res resh o)]
       )])))
 
+(define (skio-aux i h o)
+  (fresh (a b c d resa resb resh res)
+   (conde
+    [(== `(,a ,a) h) (== i a) (== i o)]
+    [(varo i) (== i o)]
+    [(combo i) (== i o)]
+    [(io i res) (== `(,a ,b) h) (== `(,i ,a) resh) (skio-aux res resh o)]
+    [(ko i res) (== `(,a ,b) h) (== `(,i ,a) resh) (skio-aux res resh o)]
+    [(so i res) (== `(,a ,b) h) (== `(,i ,a) resh) (skio-aux res resh o)]
+    [(== `(,a ,b) i) (skio-aux a h resa) (skio-aux b h resb)
+     (== `(,resa ,resb) res) 
+     (== `(,c ,d) h) (== `(,res ,c) resh) (skio-aux res resh o)]
+    )))
+
+#;(define (skio-aux i o)
+  (fresh (a b resa resb res)
+   (conde
+    [(irredexo i) (== i o)]
+    [(conde
+      [(io i res) (skio-aux res o)]
+      [(ko i res) (skio-aux res o)]
+      [(so i res) (skio-aux res o)]
+      [(== `(,a ,b) i) (skio-aux a resa) (skio-aux b resb)
+       (== `(,resa ,resb) res) (=/= i res) (skio-aux res o)]
+      [(== `(,a ,b) i) (skio-aux a resa) (skio-aux b resb)
+       (== `(,resa ,resb) res) (== i res) (== i o)]
+      )])))
+
+(define (irredexo i)
+  (fresh (a b c d e x y z)
+   (conde
+    [(varo i)]
+    [(combo i)]
+    [(== `(K ,a) i) (irredexo a)]
+    [(== `(S ,a) i) (irredexo a)]
+    [(== `((S ,a) ,b) i) (irredexo a) (irredexo b)]
+)))
+     
+     
 ;;interpreter interface
 (define (skio i o)
   (fresh (a d)
    (conde
-    [(laso i a) (skio-aux a d o)])))
+    [(laso i a) (skio-aux a '(init init) o)])))
+
+#;(define (skio i o)
+  (fresh (a)
+   (laso i a) (skio-aux a o)))
