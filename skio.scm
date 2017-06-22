@@ -40,7 +40,8 @@
    [(fresh (a b c resa resb resc)
      (== `(,a ,b . ,c) i) (=/= '() c)
      (laso a resa) (laso b resb) (laso `((,resa ,resb) . ,c) o)
-     )]))
+     )]
+   ))
 
 ;;combinator reductions
 (define (io i o)
@@ -72,7 +73,7 @@
        (== `(,c ,d) h) (== `(,res ,c) resh) (skio-aux res resh o)]
       )])))
 
-(define (skio-aux i h o)
+#;(define (skio-aux i h o)
   (fresh (a b c d resa resb resh res)
    (conde
     [(== `(,a ,a) h) (== i a) (== i o)]
@@ -86,7 +87,7 @@
      (== `(,c ,d) h) (== `(,res ,c) resh) (skio-aux res resh o)]
     )))
 
-#;(define (skio-aux i o)
+(define (skio-aux i o)
   (fresh (a b resa resb res)
    (conde
     [(irredexo i) (== i o)]
@@ -112,11 +113,11 @@
      
      
 ;;interpreter interface
-(define (skio i o)
+#;(define (skio i o)
   (fresh (a d)
    (conde
-    [(laso i a) (skio-aux a '(init init) o)])))
+    [(skio-aux a '(init init) o) (laso i a)])))
 
-#;(define (skio i o)
+(define (skio i o)
   (fresh (a)
-   (laso i a) (skio-aux a o)))
+   (skio-aux a o) (laso i a)))
