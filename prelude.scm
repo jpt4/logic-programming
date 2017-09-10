@@ -141,6 +141,15 @@
        (caro ls a) (list?o a) (cdro ls d)
        (lol?o d))]))
 
+(define (mapo rel ls o)
+  (fresh (a d res acc)
+         (conde
+          [(== '() ls) (== '() o)]
+          [(== `(,a . ,d) ls) (rel a res) 
+           (== `(,res . ,acc) o)
+           (mapo rel d acc)]
+          )))
+
 (define (non-null?o i)
   (=/= '() i))
 
