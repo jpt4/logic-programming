@@ -10,9 +10,16 @@
    [(list?o ls) (null?o e) (== ls o)]
    [(list?o ls) (=/= '() ls) (=/= '() e)
     (fresh (a)
-     (== `(,a) ls)
-     (conso a e o))]))
-
+           (== `(,a) ls)
+           (conso a e o))]))
+(define appendo2
+  (lambda (l s ls)
+    (conde
+     [(== '() l) (== s ls)]
+     [(fresh (x rest rests)
+             (== `(,x . ,rest) l)
+             (== `(,x . ,rests) ls)
+             (appendo2 rest s rests))])))
 (define (caro i o)
   (fresh (ls)
     (== `(,o . ,ls) i)))

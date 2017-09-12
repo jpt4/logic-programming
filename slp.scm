@@ -103,10 +103,15 @@
    [(eqvo i o) `(eqv i o)]))
 
 (define (eqvo i t o)
-  (fresh (x y)
+  (fresh (x y new-exp res-sub-t sub-t sub-o)
          (conde
-          [(== i o)]
-          [(dneg i x) ]
+          [(simple-statement i) (== `((,i simp)) t) (== i o)]
+          [(dneg i x) (== `((,x dneg) . ,y) t) (eqvo x y o)]
+          [(mk-not x i) (== `((,x not-comp) . ,res-sub-t) sub-t) 
+           (eqvo x res-sub-t sub-o)
+           (== `((sub-trace ,sub-t) . ,y) t)
+           (== `(~ ,sub-o) new-exp)
+           (eqvo new-exp y o)]
           )))
 
 (define (mapo rel ls o)
