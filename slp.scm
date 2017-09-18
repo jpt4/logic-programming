@@ -7,6 +7,8 @@
 
 (load "miniKanren-with-symbolic-constraints/mk.scm")
 (load "miniKanren-with-symbolic-constraints/numbers.scm")
+;;match.ss for dual rule generator
+(load "match.ss")
 
 (define (simple-statement ss)
   (conde
@@ -30,16 +32,50 @@
           [(mk-or s1 s2 c) (any-statement s1) (any-statement s2)]
 )))
 
-;; Substitution, Symmetry, and Extended Transitivity Principles
-;; are satisfied by the semantics of ==.
-;;^^may be wrong, irrelevant
+;;Characteristic, symmetric, and dual equivalence rule generation
 
-;Symmetry
+;build-rule 
+;given a characteristic rule, produce a characteristic rule procedure
+;ex. (build-rule (~ (& a b)) (& (~ a) (~ b)) => 
+#;(lambda (i o)
+  (conde
+   [(fresh (a b)
+           (any-statement a) (any-statement b)
+           (== `(~ (& ,a ,b)) i)
+           (== `(& (~ ,a) (~ ,b)) o))]))
+
+#|
+(define-syntax build-rule
+  (syntax-case ()
+      [(_ n l r) ;name, lhs, rhs
+       (let ([var-list (
+       (define-top-level-value n 
+         (lambda (i o)
+           (conde
+            [(fresh
+|#
+
+(define (flat-list? ls)
+  (andmap 
+
+(define (list-flatten ls)
+  (cond
+   [(null? ls) '()]
+   [(not (list? ls)) ls]
+   [(and (pair? (car ls)) (null? (cdar ls)))
+    (cons (caar ls) (list-flatten (cdr ls)))]
+   [(pair? (car ls)) (append (cons (list-flatten (caar ls)) 
+                                 (list-flatten (cdar ls)))
+                           (list-flatten (cdr ls)))]
+   [else (cons (car ls) (list-flatten (cdr ls)))]))
+
 ;rule r does not need to be passed quoted. (sym dneg 'x q) => (~ (~ x))
 (define (sym r i o) 
   (r o i))
 
-;; Eight Assumed Equivalence Rules and Duals
+;Duality
+
+;; Eight Assumed Equivalence Rules, Symmetries, and Duals
 
 ;Double Negation
 (define (dneg i o)
@@ -48,7 +84,7 @@
            (any-statement x)
            (== `(~ (~ ,x)) i)
            (== x o))]))
-(define (du-dneg i o) (sym dneg i o))
+(define (sym-dneg i o) (sym dneg i o))
 ;Idempotency
 (define (idem i o)
   (conde
@@ -56,7 +92,7 @@
            (any-statement x)
            (== `(& ,x ,x) i)
            (== x o))]))
-(define (du-idem i o) (sym idem i o))
+(define (sym-idem i o) (sym idem i o))
 ;Commutativity
 (define (comm i o)
   (conde
@@ -64,7 +100,7 @@
            (any-statement x) (any-statement y)
            (== `(& ,x ,y) i)
            (== `(& ,y ,x) o))]))
-(define (du-comm i o) (sym comm i o))
+(define (sym-comm i o) (sym comm i o))
 ;Associativity
 (define (assoc i o)
   (conde
@@ -72,7 +108,7 @@
            (any-statement x) (any-statement y) (any-statement z)
            (== `(& ,x (& ,y ,z)) i)
            (== `(& (& ,x ,y) ,z) o))]))
-(define (du-assoc i o) (sym assoc i o))
+(define (sym-assoc i o) (sym assoc i o))
 ;Absorption
 (define (absorp i o)
   (conde
@@ -80,7 +116,7 @@
            (any-statement x) (any-statement y)
            (== `(& ,x (// ,x ,y)) i)
            (== x o))]))
-(define (du-absorp i o) (sym absorp i o))
+(define (sym-absorp i o) (sym absorp i o))
 ;Distributivity
 (define (distr i o)
   (conde
@@ -88,7 +124,7 @@
            (any-statement x) (any-statement y) (any-statement z)
            (== `(& ,x (// ,y ,z)) i)
            (== `(// (& ,x ,y) (& ,y ,z)) o))]))
-(define (du-distr i o) (sym distr i o))
+(define (sym-distr i o) (sym distr i o))
 ;DeMorgan's Rule
 (define (dem i o)
   (conde
@@ -96,7 +132,7 @@
            (any-statement x) (any-statement y)
            (== `(~ (& ,x ,y)) i)
            (== `(& (~ ,x) (~ ,y)) o))]))
-(define (du-dem i o) (sym dem i o))
+(define (sym-dem i o) (sym dem i o))
 ;Dichotomy
 (define (dichot i o)
   (conde
@@ -104,7 +140,7 @@
            (any-statement x) (any-statement y)
            (== `(// ,x (~ ,x)) i)
            (== `(// ,y (~ ,y)) o))]))
-(define (du-dichot i o) (sym dichot i o))
+(define (sym-dichot i o) (sym dichot i o))
 
 ;; Syntactically mark statements as equivalent.
 (define (mk-eqv i o)
@@ -129,15 +165,15 @@
           [(distr i x) (== `((,x distr) . ,y) t) (eqvo x y o)]          
           [(dem i x) (== `((,x dem) . ,y) t) (eqvo x y o)]          
           [(dichot i x) (== `((,x dichot) . ,y) t) (eqvo x y o)]          
-          ;eight dual equivalence rules - expansion
-          [(du-dneg i x) (== `((,x du-sym-dneg) . ,y) t) (eqvo x y o)]
-          [(du-idem i x) (== `((,x du-idem) . ,y) t) (eqvo x y o)]
-          [(du-comm i x) (== `((,x du-comm) . ,y) t) (eqvo x y o)]
-          [(du-assoc i x) (== `((,x du-assoc) . ,y) t) (eqvo x y o)]
-          [(du-absorp i x) (== `((,x du-absorp) . ,y) t) (eqvo x y o)]
-          [(du-distr i x) (== `((,x du-distr) . ,y) t) (eqvo x y o)]          
-          [(du-dem i x) (== `((,x du-dem) . ,y) t) (eqvo x y o)]          
-          [(du-dichot i x) (== `((,x du-dichot) . ,y) t) (eqvo x y o)]
+          ;eight symmetric equivalence rules - expansion
+          [(sym-dneg i x) (== `((,x sym-sym-dneg) . ,y) t) (eqvo x y o)]
+          [(sym-idem i x) (== `((,x sym-idem) . ,y) t) (eqvo x y o)]
+          [(sym-comm i x) (== `((,x sym-comm) . ,y) t) (eqvo x y o)]
+          [(sym-assoc i x) (== `((,x sym-assoc) . ,y) t) (eqvo x y o)]
+          [(sym-absorp i x) (== `((,x sym-absorp) . ,y) t) (eqvo x y o)]
+          [(sym-distr i x) (== `((,x sym-distr) . ,y) t) (eqvo x y o)]          
+          [(sym-dem i x) (== `((,x sym-dem) . ,y) t) (eqvo x y o)]          
+          [(sym-dichot i x) (== `((,x sym-dichot) . ,y) t) (eqvo x y o)]
           ;Substitution Principle - compound decomposition
           [(mk-not x i) (== `((,x not-comp) . ,res-sub-t) sub-t) 
            (eqvo x res-sub-t sub-o)
@@ -172,7 +208,7 @@
           )))
            
 
-#;(define (thunko i o)
+(define (thunko i o)
   (== (lambda () i) o))
 
 
