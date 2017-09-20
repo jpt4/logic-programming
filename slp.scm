@@ -43,29 +43,42 @@
            (any-statement a) (any-statement b)
            (== `(~ (& ,a ,b)) i)
            (== `(& (~ ,a) (~ ,b)) o))]))
-
 #|
 (define-syntax build-rule
   (syntax-case ()
       [(_ n l r) ;name, lhs, rhs
-       (let ([var-list (
-       (define-top-level-value n 
-         (lambda (i o)
-           (conde
-            [(fresh
+       (let* ([var-list (filter (lambda (a) 
+                                  (not (or (eq? '~ a) (eq? '& a) (eq '// a))))
+                                (flatten-list lhs))]
+              [lhs-with-vars (replace-sym-with-var lhs)]
+              [fresh-clause (append `(fresh ,var-list)
+                                    (== ,(])
+         (define-top-level-value n 
+           `(lambda (i o)
+              (conde
+               [(fresh ,(var-list)
 |#
 
+(define connectives '(~ & //))                       
+
+(define (replace-sym-with-var exp)
+  (cond
+   [(null? exp) exp]
+   [(member (car exp) connectives) (cons (car exp) (replace-sym-with-var (cdr exp)))]
+   [(pair? (car exp))
+    (cons (replace-sym-with-var (car exp)) (replace-sym-with-var (cdr exp)))]
+   [(let ([cexp (car exp)])
+      (and (symbol? cexp) (not (member cexp connectives))) 
+      (cons (syntax->datum #`,#,cexp) (replace-sym-with-var (cdr exp))))]))    
+
 (define (flat-list? ls)
-  (andmap 
+  (andmap (lambda (a) (not (pair? a))) ls))
 
 (define (list-flatten ls)
   (cond
    [(null? ls) '()]
    [(not (list? ls)) ls]
-   [(and (pair? (car ls)) (null? (cdar ls)))
-    (cons (caar ls) (list-flatten (cdr ls)))]
-   [(pair? (car ls)) (append (cons (list-flatten (caar ls)) 
-                                 (list-flatten (cdar ls)))
+   [(pair? (car ls)) (append (list-flatten (car ls))
                            (list-flatten (cdr ls)))]
    [else (cons (car ls) (list-flatten (cdr ls)))]))
 
