@@ -43,28 +43,38 @@
            (any-statement a) (any-statement b)
            (== `(~ (& ,a ,b)) i)
            (== `(& (~ ,a) (~ ,b)) o))]))
-#|
+
 (define-syntax build-rule
-  (syntax-case ()
+  (syntax-rules ()
       [(_ n l r) ;name, lhs, rhs
        (let* ([var-list (filter (lambda (a) 
                                   (not (or (eq? '~ a) (eq? '& a) (eq '// a))))
-                                (flatten-list lhs))]
+                                (list-flatten lhs))]
               [lhs-with-vars (replace-sym-with-var lhs)]
+              [rhs-with-vars (replace-sym-with-var rhs)]
+              [any-statements (map (lambda (a)
+                                     (syntax->datum #`(any-statement #,a)))
+                                     var-list)]
               [fresh-clause (append `(fresh ,var-list)
-                                    (== ,(])
-         (define-top-level-value n 
-           `(lambda (i o)
-              (conde
-               [(fresh ,(var-list)
-|#
+                                    any-statements
+                                    `((== ,lhs-with-vars i))
+                                    `((== ,rhs-with-vars o)))])
+         (lambda (i o)
+             (conde
+              [fresh-clause])))]))
+
+#;(define-syntax build-rule
+  (syntax-rules ()
+      [(_ n l r)
+       (list n l r)]))
 
 (define connectives '(~ & //))                       
 
 (define (replace-sym-with-var exp)
   (cond
    [(null? exp) exp]
-   [(member (car exp) connectives) (cons (car exp) (replace-sym-with-var (cdr exp)))]
+   [(member (car exp) connectives) (cons (car exp) 
+                                         (replace-sym-with-var (cdr exp)))]
    [(pair? (car exp))
     (cons (replace-sym-with-var (car exp)) (replace-sym-with-var (cdr exp)))]
    [(let ([cexp (car exp)])
