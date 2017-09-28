@@ -34,14 +34,14 @@
 
 ;;Characteristic, symmetric, and dual equivalence rule generation
 
-(define-syntax build-named-rule 
+(define-syntax build-named-rule-syntax
   (syntax-rules ()
     [(_ n l r)
-       (define-top-level-value n (eval (build-rule l r)))]))
+       (define-top-level-value n (eval (build-rule-syntax l r)))]))
 
-;build-rule 
+;build-rule-syntax 
 ;given a characteristic rule, produce a characteristic rule procedure
-;ex. (build-rule (~ (& a b)) (& (~ a) (~ b)) => 
+;ex. (build-rule-syntax (~ (& a b)) (& (~ a) (~ b)) => 
 #;(lambda (i o)
   (conde
    [(fresh (a b)
@@ -49,7 +49,7 @@
            (== `(~ (& ,a ,b)) i)
            (== `(& (~ ,a) (~ ,b)) o))]))
 
-(define-syntax build-rule
+(define-syntax build-rule-syntax
   (syntax-rules ()
       [(_ l r)
        (let* ([var-list (extract-vars (list l r))]
@@ -57,11 +57,11 @@
                                      (syntax->datum #`(any-statement #,a)))
                                      var-list)]
               [lhs (if (symbol? l)
-                       (replace-sym-with-var l)
-                       (syntax->datum #``#,(replace-sym-with-var l)))]
+                       (replace-sym-w-var-syntax l)
+                       (syntax->datum #``#,(replace-sym-w-var-syntax l)))]
               [rhs (if (symbol? r)
-                       (replace-sym-with-var r)
-                       (syntax->datum #``#,(replace-sym-with-var r)))]
+                       (replace-sym-w-var-syntax r)
+                       (syntax->datum #``#,(replace-sym-w-var-syntax r)))]
               )
          `(lambda (i o) 
             (conde
@@ -72,28 +72,38 @@
                        )]))
          )]))
 
-(define (gav-build l r) 
-  (let* ([var-list (extract-vars (list l r))]
-         [any-statements (map (lambda (a)
-                                (list 'any-statement 'unquote a)) var-list)]
-         [lhs (gav-sym-w-var l)]
-         [rhs (gav-sym-w-var r)])
-    (list 'lambda (list 'i 'o)
-          (append (list 'fresh var-list)
-                any-statements
-                (list '== lhs i)
-                (list '== rhs o)))))
+(define (build-named-rule-value n l r)
+  (define-top-level-value n (eval (build-rule-value l r))))
 
-(define (gav-sym-w-var exp)
+(define (build-rule-value l r) 
+  (let* ([var-list (extract-vars (list l r))]
+         [any-statements 
+          (map (lambda (a)
+                 (list 'any-statement a)) var-list)]
+         [lhs (if (symbol? l)
+                       (replace-sym-w-var-value l)
+                       (list 'quasiquote (replace-sym-w-var-value l)))]
+         [rhs (if (symbol? r)
+                       (replace-sym-w-var-value r)
+                       (list 'quasiquote (replace-sym-w-var-value r)))])
+    (list 'lambda (list 'i 'o)
+          (list 'fresh var-list
+                  (list 'conde
+                        (append any-statements
+                                (list (list '== lhs 'i))
+                                (list (list '== rhs 'o))))))))
+
+(define (replace-sym-w-var-value exp)
   (cond
    [(null? exp) exp]
-   [(symbol? exp) (list 'unquote exp)]
+   [(and (symbol? exp) (not (member exp connectives))) exp]
    [(member (car exp) connectives) 
-    (cons (car exp) (gav-sym-w-var (cdr exp)))]
+    (cons (car exp) (replace-sym-w-var-value (cdr exp)))]
    [(pair? (car exp))
-    (cons (gav-sym-w-var (car exp)) (gav-sym-w-var (cdr exp)))]
+    (cons (replace-sym-w-var-value (car exp)) 
+          (replace-sym-w-var-value (cdr exp)))]
    [(and (symbol? (car exp)) (not (member (car exp) connectives)))
-    (cons (list 'unquote (car exp)) (gav-sym-w-var (cdr exp)))]))
+    (cons (list 'unquote (car exp)) (replace-sym-w-var-value (cdr exp)))]))
 
 ;;auxiliary definitions
 (define connectives '(~ & //))                       
@@ -125,20 +135,21 @@
    [(not (list? ls)) ls]
    [(pair? (car ls)) (append (list-flatten (car ls))
                            (list-flatten (cdr ls)))]
-   [else (cons (car ls) (list-flatten (cdr ls)))p]))
+   [else (cons (car ls) (list-flatten (cdr ls)))]))
 
-(define (replace-sym-with-var exp)
+(define (replace-sym-w-var-syntax exp)
   (cond
    [(null? exp) exp]
-   [(and (symbol? exp) (not (member exp connectives))) exp
-    #;(syntax->datum #`,#,exp)]
+   [(and (symbol? exp) (not (member exp connectives))) exp]
    [(member (car exp) connectives) (cons (car exp) 
-                                         (replace-sym-with-var (cdr exp)))]
+                                         (replace-sym-w-var-syntax (cdr exp)))]
    [(pair? (car exp))
-    (cons (replace-sym-with-var (car exp)) (replace-sym-with-var (cdr exp)))]
+    (cons (replace-sym-w-var-syntax (car exp)) 
+          (replace-sym-w-var-syntax (cdr exp)))]
    [(let ([cexp (car exp)])
       (and (symbol? cexp) (not (member cexp connectives))) 
-      (cons (syntax->datum #`,#,cexp) (replace-sym-with-var (cdr exp))))]))
+      (cons (syntax->datum #`,#,cexp) 
+            (replace-sym-w-var-syntax (cdr exp))))]))
 
 ;rule r does not need to be passed quoted. (sym dneg 'x q) => (~ (~ x))
 (define (sym r i o) 
