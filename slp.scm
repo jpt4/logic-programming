@@ -33,21 +33,21 @@
 (define (mk-or s1 s2 c) (== `(// ,s1 ,s2) c))
 
 ;;Characteristic, symmetric, and dual equivalence rule generation
-
-(define-syntax build-named-rule-syntax
-  (syntax-rules ()
-    [(_ n l r)
-       (define-top-level-value n (eval (build-rule-syntax l r)))]))
-
-;build-rule-syntax 
 ;given a characteristic rule, produce a characteristic rule procedure
-;ex. (build-rule-syntax (~ (& a b)) (& (~ a) (~ b)) => 
+;ex. (~ (& a b)) (& (~ a) (~ b)) => 
 #;(lambda (i o)
   (conde
    [(fresh (a b)
            (any-statement a) (any-statement b)
            (== `(~ (& ,a ,b)) i)
            (== `(& (~ ,a) (~ ,b)) o))]))
+
+;;build rule as syntax
+(define-syntax build-named-rule-syntax
+  (syntax-rules ()
+    [(_ n l r)
+       (define-top-level-value n (eval (build-rule-syntax l r)))
+       ]))
 
 (define-syntax build-rule-syntax
   (syntax-rules ()
@@ -72,8 +72,47 @@
                        )]))
          )]))
 
+(define (build-sym-rule-syntax l r)
+  (build-rule-syntax l r))
+
+(define (build-dual-rule-syntax l r)
+  (dualize (build-rule-syntax r l)))
+
+(define (build-sym-dual-rule-syntax l r)
+  (build-dual-rule-syntax r l))
+
+(define (replace-sym-w-var-syntax exp)
+  (cond
+   [(null? exp) exp]
+   [(and (symbol? exp) (not (member exp connectives))) exp]
+   [(member (car exp) connectives) (cons (car exp) 
+                                         (replace-sym-w-var-syntax (cdr exp)))]
+   [(pair? (car exp))
+    (cons (replace-sym-w-var-syntax (car exp)) 
+          (replace-sym-w-var-syntax (cdr exp)))]
+   [(let ([cexp (car exp)])
+      (and (symbol? cexp) (not (member cexp connectives))) 
+      (cons (syntax->datum #`,#,cexp) 
+            (replace-sym-w-var-syntax (cdr exp))))]))
+
+;;build rule as value
 (define (build-named-rule-value n l r)
-  (define-top-level-value n (eval (build-rule-value l r))))
+  (let* ([rule-source (build-rule-value l r)]
+         [sym-rule-source (build-sym-rule-value l r)]
+         [dual-rule-source (build-dual-rule-value l r)]
+         [sym-dual-rule-source (build-sym-dual-rule-value l r)])
+    (define-top-level-value (rule-source-name n) rule-source)
+    (define-top-level-value n (eval rule-source))
+    (define-top-level-value (rule-source-name (sym-rule-name n))
+      sym-rule-source)
+    (define-top-level-value (sym-rule-name n) (eval sym-rule-source))
+    (define-top-level-value (rule-source-name (dual-rule-name n))
+      dual-rule-source)
+    (define-top-level-value (dual-rule-name n) (eval dual-rule-source))
+    (define-top-level-value (rule-source-name (sym-dual-rule-name n))
+      dual-rule-source)
+    (define-top-level-value (sym-dual-rule-name n) (eval sym-dual-rule-source))
+))
 
 (define (build-rule-value l r) 
   (let* ([var-list (extract-vars (list l r))]
@@ -93,6 +132,15 @@
                                 (list (list '== lhs 'i))
                                 (list (list '== rhs 'o))))))))
 
+(define (build-sym-rule-value l r)
+  (build-rule-value r l))
+
+(define (build-dual-rule-value l r)
+  (dualize (build-rule-value l r)))
+
+(define (build-sym-dual-rule-value l r)
+  (build-dual-rule-value r l))
+
 (define (replace-sym-w-var-value exp)
   (cond
    [(null? exp) exp]
@@ -105,8 +153,11 @@
    [(and (symbol? (car exp)) (not (member (car exp) connectives)))
     (cons (list 'unquote (car exp)) (replace-sym-w-var-value (cdr exp)))]))
 
-;;auxiliary definitions
+;;auxiliaries
 (define connectives '(~ & //))                       
+
+(define (dualize exp)
+  (map* swap-conj-disj exp))
 
 (define (extract-vars exp) 
   (list-dedup 
@@ -137,19 +188,28 @@
                            (list-flatten (cdr ls)))]
    [else (cons (car ls) (list-flatten (cdr ls)))]))
 
-(define (replace-sym-w-var-syntax exp)
+(define (map* f ls)
   (cond
-   [(null? exp) exp]
-   [(and (symbol? exp) (not (member exp connectives))) exp]
-   [(member (car exp) connectives) (cons (car exp) 
-                                         (replace-sym-w-var-syntax (cdr exp)))]
-   [(pair? (car exp))
-    (cons (replace-sym-w-var-syntax (car exp)) 
-          (replace-sym-w-var-syntax (cdr exp)))]
-   [(let ([cexp (car exp)])
-      (and (symbol? cexp) (not (member cexp connectives))) 
-      (cons (syntax->datum #`,#,cexp) 
-            (replace-sym-w-var-syntax (cdr exp))))]))
+   [(null? ls) '()]
+   [(pair? (car ls)) (cons (map* f (car ls)) (map* f (cdr ls)))]
+   [else (cons (f (car ls)) (map* f (cdr ls)))]))
+
+(define (swap-conj-disj sym)
+  (case sym
+   [& '//]
+   [// '&]
+   [else sym]))
+
+;naming auxiliaries
+(define (rule-source-name n)
+  (string->symbol (string-append (symbol->string n) "-source")))
+(define (sym-rule-name n)
+  (string->symbol (string-append "sym-" (symbol->string n))))
+(define (dual-rule-name n)
+  (string->symbol (string-append "dual-" (symbol->string n))))
+(define (sym-dual-rule-name n)
+  (string->symbol (string-append "sym-" (symbol->string (dual-rule-name n)))))
+
 
 ;rule r does not need to be passed quoted. (sym dneg 'x q) => (~ (~ x))
 (define (sym r i o) 
