@@ -42,60 +42,8 @@
            (== `(~ (& ,a ,b)) i)
            (== `(& (~ ,a) (~ ,b)) o))]))
 
-;;build rule as syntax
-(define-syntax build-named-rule-syntax
-  (syntax-rules ()
-    [(_ n l r)
-       (define-top-level-value n (eval (build-rule-syntax l r)))
-       ]))
-
-(define-syntax build-rule-syntax
-  (syntax-rules ()
-      [(_ l r)
-       (let* ([var-list (extract-vars (list l r))]
-              [any-statements (map (lambda (a)
-                                     (syntax->datum #`(any-statement #,a)))
-                                     var-list)]
-              [lhs (if (symbol? l)
-                       (replace-sym-w-var-syntax l)
-                       (syntax->datum #``#,(replace-sym-w-var-syntax l)))]
-              [rhs (if (symbol? r)
-                       (replace-sym-w-var-syntax r)
-                       (syntax->datum #``#,(replace-sym-w-var-syntax r)))]
-              )
-         `(lambda (i o) 
-            (conde
-             [,(append `(fresh ,var-list)
-                       any-statements
-                       `((== ,lhs i))
-                       `((== ,rhs o))
-                       )]))
-         )]))
-
-(define (build-sym-rule-syntax l r)
-  (build-rule-syntax l r))
-
-(define (build-dual-rule-syntax l r)
-  (dualize (build-rule-syntax r l)))
-
-(define (build-sym-dual-rule-syntax l r)
-  (build-dual-rule-syntax r l))
-
-(define (replace-sym-w-var-syntax exp)
-  (cond
-   [(null? exp) exp]
-   [(and (symbol? exp) (not (member exp connectives))) exp]
-   [(member (car exp) connectives) (cons (car exp) 
-                                         (replace-sym-w-var-syntax (cdr exp)))]
-   [(pair? (car exp))
-    (cons (replace-sym-w-var-syntax (car exp)) 
-          (replace-sym-w-var-syntax (cdr exp)))]
-   [(let ([cexp (car exp)])
-      (and (symbol? cexp) (not (member cexp connectives))) 
-      (cons (syntax->datum #`,#,cexp) 
-            (replace-sym-w-var-syntax (cdr exp))))]))
-
 ;;build rule as value
+(define (build-named-rule n l r) (build-named-rule-value n l r))
 (define (build-named-rule-value n l r)
   (let* ([rule-source (build-rule-value l r)]
          [sym-rule-source (build-sym-rule-value l r)]
@@ -110,7 +58,7 @@
       dual-rule-source)
     (define-top-level-value (dual-rule-name n) (eval dual-rule-source))
     (define-top-level-value (rule-source-name (sym-dual-rule-name n))
-      dual-rule-source)
+      sym-dual-rule-source)
     (define-top-level-value (sym-dual-rule-name n) (eval sym-dual-rule-source))
 ))
 
@@ -210,79 +158,24 @@
 (define (sym-dual-rule-name n)
   (string->symbol (string-append "sym-" (symbol->string (dual-rule-name n)))))
 
-
-;rule r does not need to be passed quoted. (sym dneg 'x q) => (~ (~ x))
-(define (sym r i o) 
-  (r o i))
-
-;Duality
-
-;; Eight Assumed Equivalence Rules, Symmetries, and Duals
+;; Eight Assumed Equivalence Rules, Symmetries, Duals, and Symmetric Duals
 
 ;Double Negation
-(define (dneg i o)
-  (conde
-   [(fresh (x)
-           (any-statement x)
-           (== `(~ (~ ,x)) i)
-           (== x o))]))
-(define (sym-dneg i o) (sym dneg i o))
+(build-named-rule 'dneg '(~ (~ x)) 'x)
 ;Idempotency
-(define (idem i o)
-  (conde
-   [(fresh (x)
-           (any-statement x)
-           (== `(& ,x ,x) i)
-           (== x o))]))
-(define (sym-idem i o) (sym idem i o))
+(build-named-rule 'idem '(& x x) 'x)
 ;Commutativity
-(define (comm i o)
-  (conde
-   [(fresh (x y)
-           (any-statement x) (any-statement y)
-           (== `(& ,x ,y) i)
-           (== `(& ,y ,x) o))]))
-(define (sym-comm i o) (sym comm i o))
+(build-named-rule 'comm '(& x y) '(& y x))
 ;Associativity
-(define (assoc i o)
-  (conde
-   [(fresh (x y z)
-           (any-statement x) (any-statement y) (any-statement z)
-           (== `(& ,x (& ,y ,z)) i)
-           (== `(& (& ,x ,y) ,z) o))]))
-(define (sym-assoc i o) (sym assoc i o))
+(build-named-rule 'assoc '(& x (& y z)) '(& (& x y) z))
 ;Absorption
-(define (absorp i o)
-  (conde
-   [(fresh (x y)
-           (any-statement x) (any-statement y)
-           (== `(& ,x (// ,x ,y)) i)
-           (== x o))]))
-(define (sym-absorp i o) (sym absorp i o))
+(build-named-rule 'absorp '(& x (// x y)) 'x)
 ;Distributivity
-(define (distr i o)
-  (conde
-   [(fresh (x y z)
-           (any-statement x) (any-statement y) (any-statement z)
-           (== `(& ,x (// ,y ,z)) i)
-           (== `(// (& ,x ,y) (& ,y ,z)) o))]))
-(define (sym-distr i o) (sym distr i o))
+(build-named-rule 'distr '(& x (// y z)) '(// (& x y) (& x z)))
 ;DeMorgan's Rule
-(define (dem i o)
-  (conde
-   [(fresh (x y)
-           (any-statement x) (any-statement y)
-           (== `(~ (& ,x ,y)) i)
-           (== `(& (~ ,x) (~ ,y)) o))]))
-(define (sym-dem i o) (sym dem i o))
+(build-named-rule 'dem '(~ (& x y)) '(// (~ x) (~ y)))
 ;Dichotomy
-(define (dichot i o)
-  (conde
-   [(fresh (x y)
-           (any-statement x) (any-statement y)
-           (== `(// ,x (~ ,x)) i)
-           (== `(// ,y (~ ,y)) o))]))
-(define (sym-dichot i o) (sym dichot i o))
+(build-named-rule 'dichot '(// x (~ x)) '(// y (~ y)))
 
 ;; Syntactically mark statements as equivalent.
 (define (mk-eqv i o)
@@ -340,6 +233,7 @@
            (eqvo new-exp y o)]
           )))
 
+;; miniKanren auxiliaries
 (define (mapo rel ls o)
   (fresh (a d res acc)
          (conde
@@ -353,5 +247,64 @@
 (define (thunko i o)
   (== (lambda () i) o))
 
+#|
+;rule r does not need to be passed quoted. (sym dneg 'x q) => (~ (~ x))
+(define (sym r i o) 
+  (r o i))
+|#
 
+#|
+;;build rule as syntax
+(define-syntax build-named-rule-syntax
+  (syntax-rules ()
+    [(_ n l r)
+       (define-top-level-value n (eval (build-rule-syntax l r)))
+       ]))
+
+(define-syntax build-rule-syntax
+  (syntax-rules ()
+      [(_ l r)
+       (let* ([var-list (extract-vars (list l r))]
+              [any-statements (map (lambda (a)
+                                     (syntax->datum #`(any-statement #,a)))
+                                     var-list)]
+              [lhs (if (symbol? l)
+                       (replace-sym-w-var-syntax l)
+                       (syntax->datum #``#,(replace-sym-w-var-syntax l)))]
+              [rhs (if (symbol? r)
+                       (replace-sym-w-var-syntax r)
+                       (syntax->datum #``#,(replace-sym-w-var-syntax r)))]
+              )
+         `(lambda (i o) 
+            (conde
+             [,(append `(fresh ,var-list)
+                       any-statements
+                       `((== ,lhs i))
+                       `((== ,rhs o))
+                       )]))
+         )]))
+
+(define (build-sym-rule-syntax l r)
+  (build-rule-syntax l r))
+
+(define (build-dual-rule-syntax l r)
+  (dualize (build-rule-syntax r l)))
+
+(define (build-sym-dual-rule-syntax l r)
+  (build-dual-rule-syntax r l))
+
+(define (replace-sym-w-var-syntax exp)
+  (cond
+   [(null? exp) exp]
+   [(and (symbol? exp) (not (member exp connectives))) exp]
+   [(member (car exp) connectives) (cons (car exp) 
+                                         (replace-sym-w-var-syntax (cdr exp)))]
+   [(pair? (car exp))
+    (cons (replace-sym-w-var-syntax (car exp)) 
+          (replace-sym-w-var-syntax (cdr exp)))]
+   [(let ([cexp (car exp)])
+      (and (symbol? cexp) (not (member cexp connectives))) 
+      (cons (syntax->datum #`,#,cexp) 
+            (replace-sym-w-var-syntax (cdr exp))))]))
+|#
 
